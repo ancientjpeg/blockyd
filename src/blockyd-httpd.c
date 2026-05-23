@@ -145,30 +145,63 @@ static enum MHD_Result render_page(struct MHD_Connection *connection, const char
     struct blocky_response status;
     char escaped_body[8192];
     char escaped_msg[512];
-    char page[16384];
+    char page[24576];
     const char *state;
+    const char *state_class;
 
     blocky_request("GET", "/api/blocking/status", &status);
     state = status.ok ? "Blocky available" : "Blocky unavailable";
+    state_class = status.ok ? "ok" : "bad";
     html_escape(status.ok ? status.body : status.error, escaped_body, sizeof(escaped_body));
     html_escape(message ? message : "", escaped_msg, sizeof(escaped_msg));
 
     snprintf(page, sizeof(page),
         "<!doctype html>"
-        "<html><head><title>blockyd</title>"
-        "<style>body{font-family:sans-serif;max-width:720px;margin:40px auto;padding:0 16px}button{margin:4px;padding:10px 14px}pre{background:#eee;padding:12px;overflow:auto}</style>"
+        "<html><head><title>blockyd</title><meta name=viewport content=\"width=device-width,initial-scale=1\">"
+        "<style>"
+        ":root{color-scheme:dark;--bg:#0b1120;--panel:#111827;--panel2:#0f172a;--text:#e5e7eb;--muted:#94a3b8;--line:#263244;--primary:#38bdf8;--primaryText:#082f49;--warn:#fb7185;--ok:#34d399}"
+        "*{box-sizing:border-box}"
+        "body{margin:0;min-height:100vh;background:radial-gradient(circle at top left,#1e3a5f 0,#0b1120 34rem);color:var(--text);font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif}"
+        ".wrap{width:min(880px,100%%);margin:0 auto;padding:32px 16px}"
+        ".hero{margin-bottom:18px}"
+        "h1{margin:0;font-size:32px;letter-spacing:-.04em}"
+        ".subtitle{margin:4px 0 0;color:var(--muted)}"
+        ".card{background:rgba(17,24,39,.88);border:1px solid var(--line);border-radius:18px;padding:20px;margin-top:16px}"
+        ".status{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}"
+        ".label{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.08em}"
+        ".pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:7px 11px;font-weight:700}"
+        ".pill:before{content:\"\";width:9px;height:9px;border-radius:50%%;background:var(--warn);box-shadow:0 0 16px var(--warn)}"
+        ".pill.ok:before{background:var(--ok);box-shadow:0 0 16px var(--ok)}"
+        ".notice{margin:14px 0 0;border:1px solid #2563eb66;background:#1d4ed833;color:#bfdbfe;border-radius:12px;padding:10px 12px}"
+        ".actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px}"
+        "form{margin:0}"
+        "button{width:100%%;border:0;border-radius:12px;padding:11px 13px;font:inherit;font-weight:700;cursor:pointer;background:#1f2937;color:var(--text);border:1px solid #334155}"
+        "button:hover{filter:brightness(1.1)}"
+        ".primary button{background:var(--primary);color:var(--primaryText);border-color:var(--primary)}"
+        ".warning button{background:#4c1d24;color:#fecdd3;border-color:#be123c}"
+        "h2{font-size:18px;margin:0 0 10px;letter-spacing:-.02em}"
+        "pre{margin:0;max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:14px;background:var(--panel2);color:#cbd5e1;padding:14px;font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap}"
+        "@media(max-width:680px){.wrap{padding:22px 12px}.card{padding:16px;border-radius:15px}.actions{grid-template-columns:1fr 1fr}h1{font-size:28px}}"
+        "</style>"
         "</head><body>"
-        "<h1>blockyd</h1>"
-        "<p><strong>Status:</strong> %s</p>"
+        "<main class=wrap>"
+        "<header class=hero><h1>blockyd</h1><p class=subtitle>Local controls for your Blocky DNS filter.</p></header>"
+        "<section class=card>"
+        "<div class=status><div><div class=label>Status</div><div class=subtitle>Blocky API at 127.0.0.1:4000</div></div><span class=\"pill %s\">%s</span></div>"
         "%s%s%s"
-        "<form method=post action=/enable><button>Enable blocking</button></form>"
-        "<form method=post action=/disable><button>Disable blocking</button></form>"
-        "<form method=post action=/refresh><button>Refresh lists</button></form>"
-        "<form method=post action=/flush><button>Flush cache</button></form>"
-        "<h2>Blocky response</h2><pre>%s</pre>"
+        "<div class=actions>"
+        "<form class=primary method=post action=/enable><button type=submit>Enable blocking</button></form>"
+        "<form class=warning method=post action=/disable><button type=submit>Disable blocking</button></form>"
+        "<form method=post action=/refresh><button type=submit>Refresh lists</button></form>"
+        "<form method=post action=/flush><button type=submit>Flush cache</button></form>"
+        "</div>"
+        "</section>"
+        "<section class=card><h2>Blocky response</h2><pre>%s</pre></section>"
+        "</main>"
         "</body></html>",
+        state_class,
         state,
-        escaped_msg[0] ? "<p>" : "", escaped_msg, escaped_msg[0] ? "</p>" : "",
+        escaped_msg[0] ? "<p class=notice>" : "", escaped_msg, escaped_msg[0] ? "</p>" : "",
         escaped_body);
 
     return queue_html(connection, page, MHD_HTTP_OK);
