@@ -21,7 +21,7 @@ static volatile sig_atomic_t running = 1;
 struct blocky_response {
     int ok;
     int status;
-    char body[4096];
+    char body[8192];
     char error[128];
 };
 
