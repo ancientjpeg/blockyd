@@ -124,7 +124,7 @@ static void html_escape(const char *in, char *out, size_t out_len)
     out[j] = '\0';
 }
 
-static int queue_html(struct MHD_Connection *connection, const char *html, int status)
+static enum MHD_Result queue_html(struct MHD_Connection *connection, const char *html, int status)
 {
     int ret;
     struct MHD_Response *response = MHD_create_response_from_buffer(strlen(html),
@@ -139,7 +139,7 @@ static int queue_html(struct MHD_Connection *connection, const char *html, int s
     return ret;
 }
 
-static int render_page(struct MHD_Connection *connection, const char *message)
+static enum MHD_Result render_page(struct MHD_Connection *connection, const char *message)
 {
     struct blocky_response status;
     char escaped_body[8192];
@@ -173,8 +173,8 @@ static int render_page(struct MHD_Connection *connection, const char *message)
     return queue_html(connection, page, MHD_HTTP_OK);
 }
 
-static int handle_action(struct MHD_Connection *connection, const char *label,
-                         const char *method, const char *path)
+static enum MHD_Result handle_action(struct MHD_Connection *connection, const char *label,
+                                     const char *method, const char *path)
 {
     struct blocky_response res;
     char message[256];
@@ -184,9 +184,9 @@ static int handle_action(struct MHD_Connection *connection, const char *label,
     return render_page(connection, message);
 }
 
-static int answer(void *cls, struct MHD_Connection *connection,
-                  const char *url, const char *method, const char *version,
-                  const char *upload_data, size_t *upload_data_size, void **con_cls)
+static enum MHD_Result answer(void *cls, struct MHD_Connection *connection,
+                              const char *url, const char *method, const char *version,
+                              const char *upload_data, size_t *upload_data_size, void **con_cls)
 {
     (void)cls;
     (void)version;
