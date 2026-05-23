@@ -67,6 +67,7 @@ static void blocky_request(const char *method, const char *path, struct blocky_r
 
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
         snprintf(res->error, sizeof(res->error), "Blocky unavailable");
+        fprintf(stderr, "blocky request failed: %s %s: unavailable\n", method, path);
         close(fd);
         return;
     }
@@ -126,7 +127,7 @@ static void html_escape(const char *in, char *out, size_t out_len)
 
 static enum MHD_Result queue_html(struct MHD_Connection *connection, const char *html, int status)
 {
-    int ret;
+    enum MHD_Result ret;
     struct MHD_Response *response = MHD_create_response_from_buffer(strlen(html),
         (void *)html, MHD_RESPMEM_MUST_COPY);
 
@@ -181,6 +182,7 @@ static enum MHD_Result handle_action(struct MHD_Connection *connection, const ch
 
     blocky_request(method, path, &res);
     snprintf(message, sizeof(message), "%s: %s", label, res.ok ? "ok" : (res.error[0] ? res.error : "failed"));
+    fprintf(stderr, "action %s -> %s\n", label, res.ok ? "ok" : (res.error[0] ? res.error : "failed"));
     return render_page(connection, message);
 }
 
@@ -192,6 +194,8 @@ static enum MHD_Result answer(void *cls, struct MHD_Connection *connection,
     (void)version;
     (void)upload_data;
     (void)con_cls;
+
+    fprintf(stderr, "request %s %s\n", method ? method : "-", url ? url : "-");
 
     if (*upload_data_size) {
         *upload_data_size = 0;
@@ -219,8 +223,12 @@ int main(void)
 {
     struct MHD_Daemon *daemon;
 
+    setvbuf(stderr, NULL, _IONBF, 0);
     signal(SIGINT, on_signal);
     signal(SIGTERM, on_signal);
+
+    fprintf(stderr, "starting blockyd-httpd on 0.0.0.0:%d, Blocky API %s:%d\n",
+            LISTEN_PORT, BLOCKY_HOST, BLOCKY_PORT);
 
     daemon = MHD_start_daemon(MHD_USE_INTERNAL_POLLING_THREAD, LISTEN_PORT,
                               NULL, NULL, &answer, NULL, MHD_OPTION_END);
@@ -232,6 +240,7 @@ int main(void)
     while (running)
         pause();
 
+    fprintf(stderr, "stopping blockyd-httpd\n");
     MHD_stop_daemon(daemon);
     return 0;
 }

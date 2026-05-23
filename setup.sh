@@ -38,6 +38,7 @@ pkg-config --exists libmicrohttpd || die "missing libmicrohttpd development pack
 
 if [ "$YES" -eq 0 ]; then
     info "This installs blockyd to $INSTALL_DIR, writes systemd units, and creates $CONFIG_DIR if needed."
+    info "If services are already running, DNS and the WebUI will briefly stop while binaries are replaced."
     printf 'Continue? [y/N] '
     read -r ans
     case "$ans" in y|Y|yes|YES) ;; *) die "aborted" ;; esac
@@ -110,6 +111,10 @@ tar -xzf "$TMP/$ASSET" -C "$TMP/blocky"
 [ -x "$TMP/blocky/blocky" ] || die "blocky binary not found in archive"
 
 make -C "$SCRIPT_DIR" clean all
+
+info "Stopping services before replacing binaries"
+systemctl stop blockyd-httpd.service blockyd.service 2>/dev/null || true
+
 install -d -m 0755 "$INSTALL_DIR"
 install -m 0755 "$TMP/blocky/blocky" "$INSTALL_DIR/blocky"
 install -m 0755 "$SCRIPT_DIR/blockyd-httpd" "$INSTALL_DIR/blockyd-httpd"
@@ -143,6 +148,9 @@ User=$USER_NAME
 Group=$USER_NAME
 ExecStart=$INSTALL_DIR/blocky --config $CONFIG_FILE
 Restart=on-failure
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=blockyd
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 NoNewPrivileges=true
@@ -165,6 +173,9 @@ User=$USER_NAME
 Group=$USER_NAME
 ExecStart=$INSTALL_DIR/blockyd-httpd
 Restart=on-failure
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=blockyd-httpd
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 NoNewPrivileges=true
@@ -177,6 +188,7 @@ EOF
 
 systemctl daemon-reload
 systemctl enable blockyd.service blockyd-httpd.service
+info "Starting services"
 systemctl restart blockyd.service blockyd-httpd.service
 
 info "blockyd installed. WebUI listens on port 80."

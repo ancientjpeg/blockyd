@@ -23,6 +23,7 @@ sudo ./setup.sh --yes --upstream 1.1.1.1,9.9.9.9
 ```
 
 The installer preserves an existing `/etc/blockyd/blocky.yml`.
+Re-running the installer rebuilds and reinstalls the WebUI, refreshes the pinned Blocky binary, rewrites the systemd units, and restarts both services. If services are already running, DNS and the WebUI briefly stop while binaries are replaced.
 
 ## Services
 
