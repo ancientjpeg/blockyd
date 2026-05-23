@@ -45,8 +45,18 @@ if [ "$YES" -eq 0 ]; then
 fi
 
 port53_in_use() {
+    local blockyd_uid line
+
     command -v ss >/dev/null 2>&1 || return 1
-    ss -H -lntu 2>/dev/null | grep -Eq '(:|\])53[[:space:]]'
+    blockyd_uid="$(id -u "$USER_NAME" 2>/dev/null || true)"
+
+    while IFS= read -r line; do
+        [[ "$line" =~ (:|\])53[[:space:]] ]] || continue
+        [ -n "$blockyd_uid" ] && [[ "$line" =~ uid:${blockyd_uid}([^0-9]|$) ]] && continue
+        return 0
+    done < <(ss -H -lntupe 2>/dev/null || ss -H -lntu 2>/dev/null)
+
+    return 1
 }
 
 if port53_in_use; then
